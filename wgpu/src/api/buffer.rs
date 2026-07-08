@@ -291,6 +291,16 @@ impl Buffer {
         unsafe { buffer.context.buffer_as_hal::<A>(buffer) }
     }
 
+    /// The underlying browser `GPUBuffer` as a JS value (the web twin of
+    /// [`Self::as_hal`]): hand it to JS/TS WebGPU code sharing this
+    /// buffer's device (see [`Device::from_external_web`]). `None` on a
+    /// custom backend. The returned handle is a view, not an owner —
+    /// dropping/destroying this [`Buffer`] invalidates it.
+    #[cfg(webgpu)]
+    pub fn web_handle(&self) -> Option<wasm_bindgen::JsValue> {
+        Some(self.inner.as_webgpu_opt()?.web_handle())
+    }
+
     /// Returns a [`BufferSlice`] referring to the portion of `self`'s contents
     /// indicated by `bounds`. Regardless of what sort of data `self` stores,
     /// `bounds` start and end are given in bytes.

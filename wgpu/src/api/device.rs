@@ -35,6 +35,26 @@ pub type DeviceDescriptor<'a> = wgt::DeviceDescriptor<Label<'a>>;
 static_assertions::assert_impl_all!(DeviceDescriptor<'_>: Send, Sync);
 
 impl Device {
+    #[cfg(webgpu)]
+    /// Wrap an externally created browser `GPUDevice` (passed as a
+    /// `wasm_bindgen::JsValue`) and its queue, so wgpu-built libraries
+    /// can share one device with JS/TS WebGPU code — buffers created
+    /// here are bindable by the page's own pipelines (export them with
+    /// [`Buffer::web_handle`]) with no cross-device copy.
+    ///
+    /// The caller keeps ownership of the device's lifecycle (`lost`,
+    /// `uncapturederror`, limits); wgpu queries features/limits live
+    /// off the JS object. Passing a value that is not a `GPUDevice`
+    /// fails on first use with the same JS errors misusing the raw
+    /// browser API would produce.
+    pub fn from_external_web(device: wasm_bindgen::JsValue) -> (Device, Queue) {
+        let (d, q) = crate::backend::webgpu::WebDevice::from_external_js(device);
+        (
+            Device { inner: d.into() },
+            Queue { inner: q.into() },
+        )
+    }
+
     #[cfg(custom)]
     /// Returns custom implementation of Device (if custom backend and is internally T)
     pub fn as_custom<T: custom::DeviceInterface>(&self) -> Option<&T> {

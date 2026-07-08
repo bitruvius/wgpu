@@ -1257,6 +1257,36 @@ impl WebBuffer {
     fn set_mapped_range(&self, range: Range<wgt::BufferAddress>) {
         self.mapping.borrow_mut().range = range;
     }
+
+    /// The underlying browser `GPUBuffer` as a JS value, for handing to
+    /// JS/TS code that shares this buffer's device (see
+    /// [`crate::Buffer::web_handle`]).
+    pub fn web_handle(&self) -> wasm_bindgen::JsValue {
+        self.inner.clone().into()
+    }
+}
+
+impl WebDevice {
+    /// Wrap an externally created browser `GPUDevice` (and its queue) so
+    /// wgpu can record and submit work on a device owned by JS/TS code
+    /// (see [`crate::Device::from_external_web`]). The value must be a
+    /// `GPUDevice`; passing anything else produces JS errors on first
+    /// use, exactly as misusing the raw browser API would.
+    pub fn from_external_js(device: wasm_bindgen::JsValue) -> (Self, WebQueue) {
+        use wasm_bindgen::JsCast;
+        let device: webgpu_sys::GpuDevice = device.unchecked_into();
+        let queue = device.queue();
+        (
+            Self {
+                inner: device,
+                ident: crate::cmp::Identifier::create(),
+            },
+            WebQueue {
+                inner: queue,
+                ident: crate::cmp::Identifier::create(),
+            },
+        )
+    }
 }
 
 #[derive(Debug, Clone)]
